@@ -57,6 +57,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BackwardCompatibility.cs" />
+    <Compile Include="FixedSizedQueue.cs" />
     <Compile Include="MongoDBAppender.cs" />
     <Compile Include="MongoAppenderFileld.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
