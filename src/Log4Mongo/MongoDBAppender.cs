@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Timers;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using log4net.Appender;
@@ -268,5 +269,62 @@ namespace Log4Mongo
 					ExpireAfter = new TimeSpan(ExpireAfterSeconds * TimeSpan.TicksPerSecond)
 				});
 		}
+
+        #region Queue
+
+        static MongoDBAppender()
+        {
+            new MongoDBAppender();
+        }
+
+        public MongoDBAppender()
+            : base()
+        {
+            System.Timers.Timer timer = new System.Timers.Timer();
+            timer.Elapsed += new ElapsedEventHandler(Do);
+            timer.Interval = 50;
+            timer.Enabled = true;  
+        }
+
+        private FixedSizedQueue<BsonDocument> _loggingQueue;
+        private void Do(object source, ElapsedEventArgs e)
+        {
+            DoGlobalWrite();
+        }
+
+        private void DoGlobalWrite()
+        {
+            try
+            {
+                if (_loggingQueue == null || _loggingQueue.Count < 1)
+                {
+                    return;
+                }
+
+                var collection = GetCollection();
+                if (collection == null)
+                    return;
+
+                BsonDocument model = null;
+                IList<BsonDocument> bsonList = new List<BsonDocument>();
+                while (_loggingQueue.TryDequeue(out model))
+                {
+                    if (model != null)
+                    {
+                        bsonList.Add(model);
+                    }
+                }
+
+                if (bsonList.Count < 1) return;
+
+                collection.InsertManyAsync(bsonList);
+                CreateExpiryAfterIndex(collection);
+            }
+            catch
+            {
+            }
+        }
+
+        #endregion
 	}
 }
