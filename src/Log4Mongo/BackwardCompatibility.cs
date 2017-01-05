@@ -47,13 +47,7 @@ namespace Log4Mongo
 			PropertiesDictionary compositeProperties = loggingEvent.GetProperties();
 			if(compositeProperties != null && compositeProperties.Count > 0)
 			{
-				var properties = new BsonDocument();
-				foreach(DictionaryEntry entry in compositeProperties)
-				{
-					properties.Add(entry.Key.ToString(), entry.Value.ToString());
-				}
-
-				toReturn.Add("properties", properties);
+                toReturn.Add("properties", compositeProperties.ToBsonDocument());
 			}
 
 			return toReturn;
