@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
@@ -102,17 +103,26 @@ namespace Log4Mongo
 
 		protected override void Append(LoggingEvent loggingEvent)
 		{
-			var collection = GetCollection();
-			collection.InsertOneAsync(BuildBsonDocument(loggingEvent));
-			CreateExpiryAfterIndex(collection);
+            AppendInternel(loggingEvent);
 		}
 
-		protected override void Append(LoggingEvent[] loggingEvents)
-		{
-			var collection = GetCollection();
-			collection.InsertManyAsync(loggingEvents.Select(BuildBsonDocument));
-			CreateExpiryAfterIndex(collection);
-		}
+        protected override void Append(LoggingEvent[] loggingEvents)
+        {
+            foreach (var loggingEvent in loggingEvents)
+            {
+                AppendInternel(loggingEvent);
+            }
+        }
+
+        private void AppendInternel(LoggingEvent loggingEvent)
+        {
+            if (_loggingQueue == null)
+            {
+                _loggingQueue = new ConcurrentQueue<BsonDocument>();
+            }
+
+            _loggingQueue.Enqueue(BuildBsonDocument(loggingEvent));
+        }
 
 		private IMongoCollection<BsonDocument> GetCollection()
 		{
@@ -286,7 +296,7 @@ namespace Log4Mongo
             timer.Enabled = true;  
         }
 
-        private FixedSizedQueue<BsonDocument> _loggingQueue;
+        private ConcurrentQueue<BsonDocument> _loggingQueue;
         private void Do(object source, ElapsedEventArgs e)
         {
             DoGlobalWrite();
